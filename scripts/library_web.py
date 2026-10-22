@@ -8,7 +8,6 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import quote, unquote, urlsplit
 
-GPX_STUDIO_URL = "https://gpx.studio"
 TOUR_ID_PATTERN = re.compile(r"^\d+$")
 
 
@@ -22,6 +21,12 @@ def _file_role(meta: dict, filename: str) -> str:
         if entry.get("path") == filename:
             return str(entry.get("role", ""))
     return ""
+
+
+def _suggested_filename(title: str, tour_id: str, filename: str) -> str:
+    safe_title = re.sub(r'[<>:"/\\|?*\x00-\x1f]', "_", title).strip(" ._")
+    safe_title = safe_title[:100] or f"parcours_{tour_id}"
+    return f"{safe_title} - {filename}"
 
 
 def _library_page(library: Path) -> bytes:
@@ -59,8 +64,11 @@ def _library_page(library: Path) -> bytes:
             file_count += len(gpx_files)
             file_rows = []
             for gpx_file in gpx_files:
-                filename = html.escape(gpx_file.name)
+                source_filename = html.escape(gpx_file.name)
                 role = html.escape(_file_role(meta, gpx_file.name))
+                download_name = _suggested_filename(title, tour_dir.name, gpx_file.name)
+                filename = html.escape(download_name)
+                download_attribute = html.escape(download_name, quote=True)
                 download_url = (
                     f"/files/{quote(tour_dir.name, safe='')}/"
                     f"{quote(gpx_file.name, safe='')}"
@@ -71,11 +79,16 @@ def _library_page(library: Path) -> bytes:
                     <li class="file-row">
                       <div class="file-info">
                         <span class="file-name">{filename}</span>
+                        <span class="source-name">({source_filename})</span>
                         {role_markup}
                       </div>
-                      <a class="button download" href="{download_url}" download>
-                        Télécharger
-                      </a>
+                      <div class="file-actions">
+                        <a class="button editor-open" href="/app"
+                           data-gpx-path="{download_url}" target="_blank"
+                           rel="noopener noreferrer">Ouvrir dans gpx.studio</a>
+                        <a class="button download" href="{download_url}"
+                           download="{download_attribute}">Télécharger</a>
+                      </div>
                     </li>
                     """
                 )
@@ -99,14 +112,11 @@ def _library_page(library: Path) -> bytes:
                       <a class="tour-id" href="{tour_url}" target="_blank"
                          rel="noopener noreferrer">Parcours Komoot {html.escape(tour_dir.name)}</a>
                     </div>
-                    <a class="button editor" href="{GPX_STUDIO_URL}" target="_blank"
-                       rel="noopener noreferrer">Ouvrir gpx.studio</a>
                   </header>
                   {error_markup}
                   <ul class="file-list">{''.join(file_rows)}</ul>
                   <p class="import-hint">
-                    Téléchargez une version, puis importez-la dans gpx.studio
-                    avec son bouton d’ouverture de fichier.
+                    Chaque bouton d’ouverture charge directement le GPX sélectionné dans gpx.studio.
                   </p>
                 </article>
                 """
@@ -144,13 +154,15 @@ def _library_page(library: Path) -> bytes:
     .tour-id {{ font-size: .9rem; color: #52606d; }}
     .button {{ display: inline-block; padding: 9px 12px; border-radius: 7px; font-weight: 650;
       text-decoration: none; white-space: nowrap; }}
-    .editor {{ color: white; background: #175cd3; }}
+    .editor-open {{ color: white; background: #175cd3; }}
     .download {{ color: #175cd3; background: #eff8ff; }}
+    .file-actions {{ display: flex; flex-wrap: wrap; justify-content: end; gap: 8px; }}
     .file-list {{ margin: 16px 0 0; padding: 0; list-style: none; }}
     .file-row {{ display: flex; justify-content: space-between; align-items: center; gap: 12px;
       padding: 10px 0; border-top: 1px solid #eef1f4; }}
     .file-info {{ min-width: 0; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }}
     .file-name {{ overflow-wrap: anywhere; }}
+    .source-name {{ color: #7b8794; font-size: .82rem; overflow-wrap: anywhere; }}
     .role {{ padding: 2px 7px; border-radius: 999px; background: #f0f4f8; color: #52606d;
       font-size: .78rem; }}
     .import-hint {{ margin: 12px 0 0; color: #52606d; font-size: .88rem; }}
@@ -162,14 +174,14 @@ def _library_page(library: Path) -> bytes:
       main {{ margin: 24px auto; }}
       .toolbar, .tour-header {{ align-items: stretch; flex-direction: column; }}
       .counts {{ white-space: normal; }}
-      .editor {{ text-align: center; }}
+      .file-actions {{ justify-content: start; }}
     }}
   </style>
 </head>
 <body>
   <main>
     <h1>Bibliothèque GPX</h1>
-    <p class="subtitle">Parcours locaux — téléchargez une version pour l’ouvrir dans gpx.studio.</p>
+    <p class="subtitle">Parcours locaux — ouvrez ou téléchargez une version GPX.</p>
     <div class="toolbar">
       <input id="search" class="search" type="search" placeholder="Rechercher un parcours ou un fichier…"
              aria-label="Rechercher un parcours ou un fichier">
@@ -184,6 +196,10 @@ def _library_page(library: Path) -> bytes:
     const cards = [...document.querySelectorAll(".tour-card")];
     const noResults = document.querySelector("#no-results");
     const noMatch = document.querySelector("#no-match");
+    for (const link of document.querySelectorAll(".editor-open")) {{
+      const fileUrl = window.location.origin + link.dataset.gpxPath;
+      link.href = "/app?files=" + encodeURIComponent(JSON.stringify([fileUrl]));
+    }}
     search.addEventListener("input", () => {{
       const query = search.value.trim().toLocaleLowerCase();
       let visible = 0;
@@ -240,12 +256,27 @@ def make_handler(library: Path) -> type[BaseHTTPRequestHandler]:
                 if file_path is not None:
                     body = file_path.read_bytes()
                     content_type = mimetypes.guess_type(file_path.name)[0] or "application/gpx+xml"
+                    meta = {}
+                    try:
+                        loaded_meta = json.loads(
+                            (library / "tours" / parts[2] / "meta.json").read_text(
+                                encoding="utf-8"
+                            )
+                        )
+                        if isinstance(loaded_meta, dict):
+                            meta = loaded_meta
+                    except (OSError, json.JSONDecodeError):
+                        pass
+                    title = str(meta.get("title") or f"parcours_{parts[2]}")
+                    download_name = _suggested_filename(title, parts[2], file_path.name)
+                    fallback_filename = re.sub(r"[^A-Za-z0-9._-]", "_", download_name)
                     self.send_response(200)
                     self.send_header("Content-Type", content_type)
                     self.send_header("Content-Length", str(len(body)))
                     self.send_header(
                         "Content-Disposition",
-                        f"attachment; filename*=UTF-8''{quote(file_path.name)}",
+                        f'attachment; filename="{fallback_filename}"; '
+                        f"filename*=UTF-8''{quote(download_name, safe='')}",
                     )
                     self.send_header("X-Content-Type-Options", "nosniff")
                     self.end_headers()
