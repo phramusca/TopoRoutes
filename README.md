@@ -1,144 +1,138 @@
-# GPX Komoot Studio — bibliothèque locale versionnée
+# GPX Komoot Studio
 
-Ce dépôt met en œuvre une **chaîne Komoot → fichiers GPX sur disque → édition dans [gpx.studio](https://gpx.studio)** (en ligne ou auto-hébergé), sans repasser par Wanderer. L’objectif est d’avoir une **arborescence claire** et des **versions traçables** (export Komoot, dérivés édités).
+Outils locaux pour synchroniser des parcours Komoot en GPX, les organiser dans une bibliothèque versionnée, puis conserver les versions éditées avec [gpx.studio](https://gpx.studio).
 
-La vision détaillée et les alternatives d’outils sont dans [`komoot_gpx.studio_versions_119998e1.plan.md`](komoot_gpx.studio_versions_119998e1.plan.md).
-
-## En bref
-
-```mermaid
-flowchart LR
-  K[Komoot]
-  S[komootgpx]
-  L[komoot-library]
-  G[gpx.studio]
-  K --> S
-  S --> L
-  L --> G
-  G -->|"nouveau fichier NN_gpxstudio_*.gpx"| L
-```
-
-1. **Synchroniser** vos parcours Komoot vers des GPX locaux avec **KomootGPX** (`komootgpx` sur PyPI), outil communautaire basé sur des **endpoints non documentés** (voir [limites](#limites-et-risques)).
-2. **Organiser** automatiquement les fichiers dans `komoot-library/tours/<id_komoot>/` et tenir un **`meta.json`** par parcours.
-3. **Éditer** dans gpx.studio, puis **enregistrer** chaque version dérivée avec la commande `add-gpxstudio` (nouveau fichier + entrée dans `meta.json`).
+Le téléchargement est assuré par [KomootGPX](https://github.com/timschneeb/KomootGPX), un outil communautaire qui s’appuie sur des endpoints Komoot non documentés.
 
 ## Installation
 
-Installez [uv](https://docs.astral.sh/uv/getting-started/installation/), puis :
+Prérequis : Python 3.10 ou plus récent et [uv](https://docs.astral.sh/uv/getting-started/installation/).
+
+Depuis la racine du dépôt :
 
 ```bash
-cd /chemin/vers/gpx-komoot-studio
 uv sync
 ```
 
-`uv` crée et gère automatiquement l’environnement du projet dans `.venv/` ; il n’est pas nécessaire de l’activer ni d’utiliser `pip` manuellement. Vous pouvez aussi lancer directement les commandes ci-dessous avec `uv run` : il synchronise les dépendances si nécessaire.
+`uv` installe les dépendances déclarées dans `pyproject.toml`, crée l’environnement `.venv/` et expose la commande du projet. Il n’est pas nécessaire d’activer l’environnement.
 
-## Authentification Komoot
+## Utilisation
 
-KomootGPX demande les identifiants lors de la première synchronisation et conserve sa session dans le cache local de l’utilisateur. La commande recommandée lance le script d’intégration depuis la racine du dépôt :
+### Synchroniser Komoot
+
+Depuis la racine du dépôt :
 
 ```bash
 uv run komoot-library sync
 ```
 
-Le script lance KomootGPX depuis `komoot-library/` et conserve les GPX bruts dans `.sync_cache/`, afin que les synchronisations suivantes puissent détecter les changements.
+À la première utilisation, KomootGPX demande les identifiants Komoot. Il gère le jeton de session dans le cache local de l’utilisateur, en dehors du dépôt ; il peut redemander une authentification lorsque ce jeton expire.
 
-Le dossier `.sync_cache/` est ignoré par Git et doit être conservé : KomootGPX a besoin des GPX qui s’y trouvent, ainsi que des empreintes conservées dans son cache local utilisateur, pour comparer les parcours lors des syncs suivantes. Le premier lancement télécharge donc tout ; ensuite, l’option `-S` saute les parcours inchangés. Seuls les GPX modifiés (ou absents de `tours/`) sont recopiés dans la bibliothèque. Ne supprimez pas ce cache si vous voulez éviter de tout retélécharger à la prochaine sync.
+La première sync télécharge les parcours. Les suivantes utilisent `-S` pour ignorer ceux que KomootGPX considère inchangés. Les GPX bruts et persistants sont conservés dans `komoot-library/.sync_cache/` : **ne supprimez pas ce dossier** si vous voulez éviter de télécharger à nouveau tous les parcours. Le cache d’empreintes propre à KomootGPX se trouve lui aussi dans le cache local de l’utilisateur.
 
-## Structure des dossiers
+Le script copie vers `tours/<id>/` les GPX qui viennent d’être téléchargés ou dont le fichier de destination manque, puis met à jour `meta.json`. Les GPX inchangés ne sont pas réécrits.
 
-```text
-komoot-library/
-  .sync_cache/             # GPX bruts conservés pour la détection des changements (gitignored)
-  tours/
-    <komoot_tour_id>/      # ex. 12345678
-      meta.json
-      01_komoot_sync.gpx   # ou 01_komoot_planned / 02_komoot_recorded selon le mode
-      NN_gpxstudio_YYYY-MM-DD.gpx   # versions éditées (NN = ordre global dans le dossier)
-```
+### Filtrer les parcours
 
-- **`--tour-type planned`** : fichier cible `01_komoot_planned.gpx`, rôle `planned`.
-- **`--tour-type recorded`** : `02_komoot_recorded.gpx`, rôle `recorded`.
-- **`--tour-type all`** (défaut) : `01_komoot_sync.gpx`, rôle `komoot_export`.
-
-Variable optionnelle : **`KOMOOT_LIBRARY`** — chemin absolu vers la racine `komoot-library` si elle n’est pas à la racine du dépôt.
-
----
-
-## Fichier `meta.json`
-
-Chaque dossier `tours/<id>/` peut contenir un `meta.json` mis à jour par les scripts :
-
-| Champ         | Description                                                                                                                     |
-| ------------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| `komoot_id`   | Identifiant numérique Komoot                                                                                                    |
-| `title`       | Titre lu dans le GPX si disponible                                                                                              |
-| `url`         | Lien `https://www.komoot.com/tour/<id>`                                                                                         |
-| `last_sync`   | Horodatage ISO (UTC) de la dernière sync Komoot                                                                                 |
-| `source_tool` | Ex. `komootgpx`                                                                                                                 |
-| `files`       | Liste d’objets `{ "path", "role", "updated_at" }` — rôles typiques : `planned`, `recorded`, `komoot_export`, `edited_gpxstudio` |
-
----
-
-## Script `scripts/komoot_library.py`
-
-### `sync`
-
-Lance KomootGPX avec le répertoire de travail **`komoot-library/`**, sortie persistante dans `.sync_cache/`, puis copie les nouveaux ou modifiés GPX vers `tours/<id>/` et met à jour `meta.json`.
-
-Sans argument supplémentaire, le script passe par défaut **`-a -S`** à komootgpx (tous les parcours, ignorer ceux dont l’empreinte n’a pas changé depuis le dernier téléchargement). **`-I`** (noms de fichiers = id tour) est ajouté automatiquement s’il manque. Si vous fournissez vos propres arguments, utilisez `-S` plutôt que `-s` pour conserver la détection des changements.
+Par défaut, la sync traite tous les types de parcours. Pour synchroniser uniquement les parcours planifiés, passez le filtre KomootGPX après `--` :
 
 ```bash
-uv run komoot-library sync
-uv run komoot-library sync --tour-type planned
+uv run komoot-library sync --tour-type planned -- -a -S -t planned
+```
+
+Pour les parcours enregistrés :
+
+```bash
+uv run komoot-library sync --tour-type recorded -- -a -S -t recorded
+```
+
+`--tour-type` choisit le nom et le rôle des fichiers dans la bibliothèque ; `-t` filtre les parcours téléchargés par KomootGPX. Pour passer d’autres options KomootGPX, utilisez également `--` :
+
+```bash
 uv run komoot-library sync -- -a -S --start-date 2026-01-01
 ```
 
-### `add-gpxstudio`
+Lorsque des arguments KomootGPX sont fournis, ils remplacent les options par défaut `-a -S`. Ajoutez `-S` explicitement si vous souhaitez conserver la détection des parcours inchangés ; évitez `-s`, qui saute les fichiers déjà présents dans le dossier de sortie au lieu de vérifier les changements.
 
-Après export depuis gpx.studio, enregistre une **nouvelle version** (copie + entrée dans `meta.json`). Le nom est `NN_gpxstudio_YYYY-MM-DD.gpx` avec `NN` = prochain index disponible parmi tous les `NN_*.gpx` du dossier.
+### Enregistrer une version éditée
+
+Après avoir exporté le GPX depuis gpx.studio, ajoutez-le à la bibliothèque :
 
 ```bash
-uv run komoot-library add-gpxstudio --tour-id 12345678 --source ~/Downloads/ma_route.gpx
-uv run komoot-library add-gpxstudio --tour-id 12345678 --source ./edit.gpx --date 2026-04-15
+uv run komoot-library add-gpxstudio \
+  --tour-id 12345678 \
+  --source ~/Downloads/ma_route.gpx
 ```
 
----
+Le script copie le fichier dans `komoot-library/tours/12345678/`, lui attribue le prochain préfixe numérique disponible (`NN_gpxstudio_YYYY-MM-DD.gpx`) et actualise `meta.json`. La date est celle du jour en UTC par défaut ; elle peut être fournie explicitement :
 
-## Limites et risques
+```bash
+uv run komoot-library add-gpxstudio \
+  --tour-id 12345678 \
+  --source ./edit.gpx \
+  --date 2026-04-15
+```
 
-- **Pas d’API officielle de sync** côté Komoot pour un export automatisé de masse ; les outils tiers peuvent **casser** si Komoot change son API. Prévoir des **exports de secours** (takeout, ZIP, copie régulière de `komoot-library/`).
-- **Komoot ← gpx.studio** : pas de synchronisation inverse automatique « comme Git ». Le flux habituel est un **réimport manuel** d’un GPX dans Komoot quand vous voulez mettre à jour un itinéraire ([aide Komoot](https://support.komoot.com/hc/en-us/articles/360022834132-Export-and-import-GPS-files)).
-- **Session KomootGPX** : les identifiants et empreintes de parcours sont conservés dans le cache local de l’utilisateur ; ne partagez pas ce cache.
+## Référence technique
 
----
+### Arborescence
 
-## Ce qui est déjà en place
+```text
+komoot-library/
+  .sync_cache/             # GPX bruts nécessaires aux syncs incrémentales (ignoré par Git)
+  tours/
+    <komoot_tour_id>/
+      meta.json
+      01_komoot_sync.gpx   # type all
+      01_komoot_planned.gpx # type planned
+      02_komoot_recorded.gpx # type recorded
+      NN_gpxstudio_YYYY-MM-DD.gpx
+```
 
-- Choix d’un outil de sync : **KomootGPX** intégré au script `sync`.
-- Convention de dossiers `komoot-library/tours/<id>/` + `meta.json` + nommage Komoot / gpx.studio.
-- Dépendance Python déclarée dans `pyproject.toml`, environnement géré par `uv` et `.gitignore` adapté.
+Les noms Komoot dépendent du `--tour-type` du script :
 
----
+| `--tour-type` | Fichier Komoot | Rôle dans `meta.json` |
+| --- | --- | --- |
+| `all` (défaut) | `01_komoot_sync.gpx` | `komoot_export` |
+| `planned` | `01_komoot_planned.gpx` | `planned` |
+| `recorded` | `02_komoot_recorded.gpx` | `recorded` |
 
-## Ce qu’il reste à faire / questions en suspens
+Le type `all` regroupe les GPX téléchargés sous le nom `01_komoot_sync.gpx`. Pour séparer les parcours planifiés et enregistrés, faites deux syncs avec le filtre KomootGPX correspondant (`-t planned` et `-t recorded`) et le `--tour-type` correspondant.
 
-| Sujet                                  | Détail                                                                                                                                                                                |
-| -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **gpx.studio : hébergement**           | Utiliser **gpx.studio en ligne** uniquement, ou **build statique + nginx/Caddy** sur une machine locale (ex. Raspberry Pi) pour la confidentialité et des URLs stables vers les GPX ? |
-| **Accès aux fichiers pour gpx.studio** | Édition par **glisser-déposer** depuis l’explorateur de fichiers, ou **serveur HTTP** local pointant vers `komoot-library/` (voire paramètre `?files=[...]` si même origine) ?        |
-| **Alternative à KomootGPX**            | Le plan mentionne **export-komoot** (Go), **routesmith**, **komoot-takeout** : à comparer si vous avez besoin d’autres filtres, du FIT, ou d’un comportement différent.               |
-| **Images Komoot**                      | komootgpx peut télécharger des dossiers `*_images` ; le script actuel se concentre sur les **GPX** — décider si vous rangez aussi les images sous `tours/<id>/`.                      |
-| **Git / sauvegardes**                  | Initialiser un dépôt sur `komoot-library/`, tags sur versions stables, **Git LFS** si les GPX deviennent très lourds ; sauvegardes hors machine (NAS, cloud chiffré).                 |
-| **Évolution du script**                | Liste des versions, détection de doublons, validation GPX : possible plus tard en Python sans changer la convention de dossiers.                                                      |
-| **Maintenance**                        | Après toute mise à jour Komoot, **retester** komootgpx ; surveiller les issues du projet [KomootGPX](https://github.com/timschneeb/KomootGPX).                                        |
+### Métadonnées `meta.json`
 
----
+Un fichier `meta.json` est créé ou actualisé dans chaque dossier de parcours :
 
-## Fichiers utiles
+| Champ | Description |
+| --- | --- |
+| `komoot_id` | Identifiant numérique Komoot |
+| `title` | Premier nom trouvé dans le GPX, si disponible |
+| `url` | URL du parcours Komoot |
+| `last_sync` | Date UTC de la dernière mise à jour du GPX par le script |
+| `source_tool` | Outil source, par défaut `komootgpx` |
+| `files` | Fichiers suivis, chacun avec `path`, `role` et `updated_at` |
 
-| Fichier                                                                                      | Rôle                                                                                                 |
-| -------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
-| [`komoot_gpx.studio_versions_119998e1.plan.md`](komoot_gpx.studio_versions_119998e1.plan.md) | Plan d’origine (contexte, alternatives, ce que le flux ne fait pas).                                 |
-| [`scripts/komoot_library.py`](scripts/komoot_library.py)                                     | Implémentation ; aide intégrée : `uv run komoot-library -h` et `uv run komoot-library sync -h`, etc. |
-| [`pyproject.toml`](pyproject.toml)                                                           | Dépendance `komootgpx` et configuration du projet `uv`.                                              |
+Rôles utilisés : `planned`, `recorded`, `komoot_export` et `edited_gpxstudio`. Les chemins `path` sont relatifs au dossier du parcours.
+
+### Options générales
+
+```bash
+uv run komoot-library --help
+uv run komoot-library sync --help
+uv run komoot-library add-gpxstudio --help
+```
+
+La racine de la bibliothèque est `komoot-library/` à la racine du dépôt par défaut. Elle peut être remplacée par la variable d’environnement `KOMOOT_LIBRARY` ou par l’option globale `--library` :
+
+```bash
+uv run komoot-library --library /chemin/vers/ma-bibliotheque sync
+```
+
+L’option doit précéder la sous-commande.
+
+## Limites et sécurité
+
+- KomootGPX est un outil communautaire basé sur des endpoints non documentés ; une évolution de Komoot peut interrompre la sync.
+- L’édition dans gpx.studio ne met pas automatiquement à jour le parcours Komoot : le réimport dans Komoot reste manuel ([aide Komoot](https://support.komoot.com/hc/en-us/articles/360022834132-Export-and-import-GPS-files)).
+- Le cache local KomootGPX contient des informations de session ; ne le partagez pas et ne le commitez pas.
+- Sauvegardez régulièrement `komoot-library/`, en particulier `tours/`. `.sync_cache/` peut être reconstruit en retéléchargeant les GPX, mais cela implique une sync complète.

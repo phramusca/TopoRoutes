@@ -245,9 +245,9 @@ def cmd_add_gpxstudio(args: argparse.Namespace) -> int:
         return 1
 
     date_s = args.date or datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    tour_dir.mkdir(parents=True, exist_ok=True)
     idx = next_version_index(tour_dir)
     dest_name = f"{idx:02d}_gpxstudio_{date_s}.gpx"
-    tour_dir.mkdir(parents=True, exist_ok=True)
     dest = tour_dir / dest_name
     shutil.copy2(src, dest)
 
