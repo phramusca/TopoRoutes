@@ -36,6 +36,32 @@ Sur Linux, si `pip` refuse l’installation système (PEP 668), le **venv est ob
 
 ---
 
+## Authentification Komoot
+
+KomootGPX demande les identifiants lors de la première synchronisation et enregistre sa session dans `komoot-library/credentials.json` (fichier ignoré par Git, à ne jamais committer). La commande recommandée lance le script d’intégration depuis la racine du dépôt :
+
+```bash
+.venv/bin/python scripts/komoot_library.py sync
+```
+
+Le script lance KomootGPX depuis `komoot-library/` et lui passe `-o .sync_incoming` pour y enregistrer les GPX. Pour lancer KomootGPX directement, depuis la racine du dépôt :
+
+```bash
+mkdir -p komoot-library
+cd komoot-library
+../.venv/bin/python -m komootgpx -o .sync_incoming -a -s -I
+```
+
+Cette commande directe dépose les GPX dans `.sync_incoming/` ; revenez à la racine du dépôt et lancez ensuite :
+
+```bash
+.venv/bin/python scripts/komoot_library.py organize
+```
+
+pour les ranger et mettre à jour `meta.json`.
+
+---
+
 ## Structure des dossiers
 
 ```
@@ -76,7 +102,7 @@ Chaque dossier `tours/<id>/` peut contenir un `meta.json` mis à jour par les sc
 
 ### `sync`
 
-Lance `python -m komootgpx` avec le répertoire de travail **`komoot-library/`** (pour que `credentials.json` y soit créé), sortie dans `.sync_incoming/`, puis déplace les GPX vers `tours/<id>/` et met à jour `meta.json`.
+Lance KomootGPX avec le répertoire de travail **`komoot-library/`**, sortie dans `.sync_incoming/`, puis déplace les GPX vers `tours/<id>/` et met à jour `meta.json`.
 
 Sans argument supplémentaire, le script passe par défaut **`-a -s`** à komootgpx (tous les parcours, ignorer les fichiers déjà présents dans la zone de sync). **`-I`** (noms de fichiers = id tour) est ajouté automatiquement s’il manque.
 
@@ -85,8 +111,6 @@ Sans argument supplémentaire, le script passe par défaut **`-a -s`** à komoot
 .venv/bin/python scripts/komoot_library.py sync --tour-type planned
 .venv/bin/python scripts/komoot_library.py sync -- -a -s --start-date 2026-01-01
 ```
-
-Identifiants : selon komootgpx (invite interactive, `-m`/`-p`, ou mécanisme documenté dans leur README — **ne jamais committer mots de passe**).
 
 ### `organize`
 
