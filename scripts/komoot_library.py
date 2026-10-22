@@ -2,29 +2,26 @@
 """
 Chaîne locale Komoot → GPX → organisation dans komoot-library/tours/<id>/ + meta.json.
 
-Prérequis : environnement virtuel avec `pip install -r requirements.txt`.
+Prérequis : environnement du projet géré avec `uv`.
 
 Exemples :
 
-  # Sync complète (équivalent komootgpx : -a -s -I), identifiants en interactif ou KOMOOT_* / -m/-p
+  # Sync initiale puis incrémentale (équivalent komootgpx : -a -S -I)
   ./scripts/komoot_library.py sync
 
   # Arguments transmis tels quels à komootgpx (le script force -I si absent)
-  ./scripts/komoot_library.py sync -- -a -s --start-date 2026-01-01
-
-  # Réorganiser uniquement le contenu de .sync_incoming (après un komootgpx manuel)
-  ./scripts/komoot_library.py organize --tour-type planned
+  ./scripts/komoot_library.py sync -- -a -S --start-date 2026-01-01
 
   # Enregistrer une nouvelle version issue de gpx.studio (copie + meta.json)
   ./scripts/komoot_library.py add-gpxstudio --tour-id 12345 --source ~/Downloads/route.gpx
 
-komootgpx écrit credentials.json dans le répertoire de travail : le sync utilise
-`komoot-library/` comme cwd pour ce fichier (ne pas le versionner : .gitignore).
+komootgpx utilise le répertoire de travail `komoot-library/` pour ses opérations.
 """
 
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import re
@@ -125,12 +122,14 @@ def upsert_file_entry(files: list[dict[str, Any]], path: str, role: str) -> None
     files.append({"path": path, "role": role, "updated_at": now})
 
 
-def organize_gpx_from_staging(
+def copy_gpx_to_tours(
     library: Path,
     staging: Path,
     tour_type: str,
+    filenames: set[str] | None = None,
+    preserve_source: bool = False,
 ) -> list[str]:
-    """Déplace les GPX reconnus depuis staging vers tours/<id>/ et met à jour meta.json."""
+    """Range les GPX reconnus et met à jour meta.json."""
     if not staging.is_dir():
         return []
 
@@ -140,6 +139,8 @@ def organize_gpx_from_staging(
     for item in sorted(staging.iterdir()):
         if not item.is_file() or item.suffix.lower() != ".gpx":
             continue
+        if filenames is not None and item.name not in filenames:
+            continue
         tour_id = parse_tour_id_from_gpx_filename(item.name)
         if not tour_id:
             continue
@@ -147,7 +148,10 @@ def organize_gpx_from_staging(
         tour_dir = library / "tours" / tour_id
         tour_dir.mkdir(parents=True, exist_ok=True)
         dest = tour_dir / target_name
-        shutil.move(str(item), str(dest))
+        if preserve_source:
+            shutil.copy2(item, dest)
+        else:
+            shutil.move(str(item), str(dest))
         processed.append(tour_id)
 
         title = gpx_first_name(dest)
@@ -163,6 +167,17 @@ def organize_gpx_from_staging(
     return processed
 
 
+def gpx_fingerprints(directory: Path) -> dict[str, str]:
+    """Empreinte du contenu des GPX présents dans un répertoire."""
+    if not directory.is_dir():
+        return {}
+    return {
+        item.name: hashlib.sha256(item.read_bytes()).hexdigest()
+        for item in directory.iterdir()
+        if item.is_file() and item.suffix.lower() == ".gpx"
+    }
+
+
 def run_komootgpx(library: Path, staging: Path, extra: list[str]) -> int:
     staging.mkdir(parents=True, exist_ok=True)
     cmd = [sys.executable, "-m", "komootgpx", "-o", str(staging)]
@@ -175,23 +190,36 @@ def run_komootgpx(library: Path, staging: Path, extra: list[str]) -> int:
 
 def cmd_sync(args: argparse.Namespace) -> int:
     library = resolve_library(args.library)
-    staging = library / ".sync_incoming"
+    staging = library / ".sync_cache"
+    before = gpx_fingerprints(staging)
     extra = list(args.komootgpx_args)
     if not extra:
-        extra = ["-a", "-s"]
+        extra = ["-a", "-S"]
 
     rc = run_komootgpx(library, staging, extra)
     if rc != 0:
         return rc
 
-    organize_gpx_from_staging(library, staging, args.tour_type)
-    return 0
-
-
-def cmd_organize(args: argparse.Namespace) -> int:
-    library = resolve_library(args.library)
-    staging = library / ".sync_incoming"
-    organize_gpx_from_staging(library, staging, args.tour_type)
+    after = gpx_fingerprints(staging)
+    target_name, _ = target_komoot_filename(args.tour_type)
+    changed_or_missing = {
+        filename
+        for filename, fingerprint in after.items()
+        if before.get(filename) != fingerprint
+        or not (
+            library
+            / "tours"
+            / (parse_tour_id_from_gpx_filename(filename) or "")
+            / target_name
+        ).is_file()
+    }
+    copy_gpx_to_tours(
+        library,
+        staging,
+        args.tour_type,
+        filenames=changed_or_missing,
+        preserve_source=True,
+    )
     return 0
 
 
@@ -255,17 +283,9 @@ def main() -> int:
     p_sync.add_argument(
         "komootgpx_args",
         nargs="*",
-        help="Arguments komootgpx (défaut sans argument : -a -s)",
+        help="Arguments komootgpx (défaut sans argument : -a -S)",
     )
     p_sync.set_defaults(func=cmd_sync)
-
-    p_org = sub.add_parser("organize", help="Organise uniquement .sync_incoming")
-    p_org.add_argument(
-        "--tour-type",
-        choices=("planned", "recorded", "all"),
-        default="all",
-    )
-    p_org.set_defaults(func=cmd_organize)
 
     p_add = sub.add_parser("add-gpxstudio", help="Enregistre une version éditée (nouveau fichier)")
     p_add.add_argument("--tour-id", required=True, help="Identifiant numérique Komoot du parcours")

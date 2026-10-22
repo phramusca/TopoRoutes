@@ -2,5 +2,4 @@
 __pycache__/
 *.pyc
 .pytest_cache/
-komoot-library/.sync_incoming/
-komoot-library/credentials.json
+komoot-library/.sync_cache/
