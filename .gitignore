@@ -1,0 +1,6 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+komoot-library/.sync_incoming/
+komoot-library/credentials.json
