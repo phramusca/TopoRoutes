@@ -13,6 +13,14 @@
       <text>View tour on Komoot</text>
     </link>
   </metadata>
+  <wpt lat="45.510727" lon="6.719719">
+    <ele>0</ele>
+    <name>Tunnel Inversens</name>
+    <cmt></cmt>
+    <desc></desc>
+    <src>Komoot</src>
+    <type>Generic</type>
+  </wpt>
   <wpt lat="45.493322" lon="6.734898">
     <name>Roche de Mio</name>
     <cmt></cmt>

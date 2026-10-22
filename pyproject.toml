@@ -1,0 +1,11 @@
+[project]
+name = "gpx-komoot-studio"
+version = "0.1.0"
+description = "Scripts locaux pour synchroniser et organiser les parcours Komoot en GPX"
+requires-python = ">=3.10"
+dependencies = [
+    "komootgpx>=1.4.3",
+]
+
+[tool.uv]
+package = false

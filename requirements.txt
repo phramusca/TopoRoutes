@@ -1,2 +1,0 @@
-# Sync Komoot → GPX (outil communautaire, voir le plan du dépôt)
-komootgpx>=1.4.3

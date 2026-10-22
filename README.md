@@ -26,13 +26,14 @@ flowchart LR
 
 ## Installation
 
+Installez [uv](https://docs.astral.sh/uv/getting-started/installation/), puis :
+
 ```bash
 cd /chemin/vers/gpx-komoot-studio
-python3 -m venv .venv
-.venv/bin/pip install -r requirements.txt
+uv sync
 ```
 
-Sur Linux, si `pip` refuse l’installation système (PEP 668), le **venv est obligatoire**.
+`uv` crée et gère automatiquement l’environnement du projet dans `.venv/` ; il n’est pas nécessaire de l’activer ni d’utiliser `pip` manuellement. Vous pouvez aussi lancer directement les commandes ci-dessous avec `uv run` : il synchronise les dépendances si nécessaire.
 
 ---
 
@@ -41,24 +42,23 @@ Sur Linux, si `pip` refuse l’installation système (PEP 668), le **venv est ob
 KomootGPX demande les identifiants lors de la première synchronisation et enregistre sa session dans `komoot-library/credentials.json` (fichier ignoré par Git, à ne jamais committer). La commande recommandée lance le script d’intégration depuis la racine du dépôt :
 
 ```bash
-.venv/bin/python scripts/komoot_library.py sync
+uv run python scripts/komoot_library.py sync
 ```
 
 Le script lance KomootGPX depuis `komoot-library/` et lui passe `-o .sync_incoming` pour y enregistrer les GPX. Pour lancer KomootGPX directement, depuis la racine du dépôt :
 
 ```bash
-mkdir -p komoot-library
 cd komoot-library
-../.venv/bin/python -m komootgpx -o .sync_incoming -a -s -I
+uv run --project .. python -m komootgpx -o .sync_incoming -a -s -I
 ```
 
-Cette commande directe dépose les GPX dans `.sync_incoming/` ; revenez à la racine du dépôt et lancez ensuite :
+`.sync_incoming/` est une zone de transit : le script `sync` y télécharge les GPX, puis les déplace vers `tours/<id>/` et met à jour `meta.json`. Il est donc normal que ce dossier soit vide après une synchronisation réussie. Avec le lancement direct de KomootGPX ci-dessus, les fichiers y restent jusqu’à leur rangement ; revenez à la racine du dépôt et lancez :
 
 ```bash
-.venv/bin/python scripts/komoot_library.py organize
+uv run python scripts/komoot_library.py organize
 ```
 
-pour les ranger et mettre à jour `meta.json`.
+L’option KomootGPX `-s` évite les fichiers déjà présents dans le dossier de sortie ; comme `sync` déplace ensuite ces fichiers hors de `.sync_incoming/`, elle ne sert pas à ignorer les parcours déjà rangés dans `tours/`.
 
 ---
 
@@ -107,9 +107,9 @@ Lance KomootGPX avec le répertoire de travail **`komoot-library/`**, sortie dan
 Sans argument supplémentaire, le script passe par défaut **`-a -s`** à komootgpx (tous les parcours, ignorer les fichiers déjà présents dans la zone de sync). **`-I`** (noms de fichiers = id tour) est ajouté automatiquement s’il manque.
 
 ```bash
-.venv/bin/python scripts/komoot_library.py sync
-.venv/bin/python scripts/komoot_library.py sync --tour-type planned
-.venv/bin/python scripts/komoot_library.py sync -- -a -s --start-date 2026-01-01
+uv run python scripts/komoot_library.py sync
+uv run python scripts/komoot_library.py sync --tour-type planned
+uv run python scripts/komoot_library.py sync -- -a -s --start-date 2026-01-01
 ```
 
 ### `organize`
@@ -117,7 +117,7 @@ Sans argument supplémentaire, le script passe par défaut **`-a -s`** à komoot
 Si vous avez lancé **komootgpx à la main** vers `.sync_incoming/`, cette commande ne fait que **déplacer** les GPX reconnus vers `tours/<id>/` et mettre à jour les métadonnées.
 
 ```bash
-.venv/bin/python scripts/komoot_library.py organize --tour-type all
+uv run python scripts/komoot_library.py organize --tour-type all
 ```
 
 ### `add-gpxstudio`
@@ -125,8 +125,8 @@ Si vous avez lancé **komootgpx à la main** vers `.sync_incoming/`, cette comma
 Après export depuis gpx.studio, enregistre une **nouvelle version** (copie + entrée dans `meta.json`). Le nom est `NN_gpxstudio_YYYY-MM-DD.gpx` avec `NN` = prochain index disponible parmi tous les `NN_*.gpx` du dossier.
 
 ```bash
-.venv/bin/python scripts/komoot_library.py add-gpxstudio --tour-id 12345678 --source ~/Downloads/ma_route.gpx
-.venv/bin/python scripts/komoot_library.py add-gpxstudio --tour-id 12345678 --source ./edit.gpx --date 2026-04-15
+uv run python scripts/komoot_library.py add-gpxstudio --tour-id 12345678 --source ~/Downloads/ma_route.gpx
+uv run python scripts/komoot_library.py add-gpxstudio --tour-id 12345678 --source ./edit.gpx --date 2026-04-15
 ```
 
 ---
@@ -143,7 +143,7 @@ Après export depuis gpx.studio, enregistre une **nouvelle version** (copie + en
 
 - Choix d’un outil de sync : **KomootGPX** intégré au script `sync`.
 - Convention de dossiers `komoot-library/tours/<id>/` + `meta.json` + nommage Komoot / gpx.studio.
-- Environnement Python décrit dans `requirements.txt` et `.gitignore` adapté.
+- Dépendance Python déclarée dans `pyproject.toml`, environnement géré par `uv` et `.gitignore` adapté.
 
 ---
 
@@ -166,5 +166,5 @@ Après export depuis gpx.studio, enregistre une **nouvelle version** (copie + en
 | Fichier | Rôle |
 |---------|------|
 | [`komoot_gpx.studio_versions_119998e1.plan.md`](komoot_gpx.studio_versions_119998e1.plan.md) | Plan d’origine (contexte, alternatives, ce que le flux ne fait pas). |
-| [`scripts/komoot_library.py`](scripts/komoot_library.py) | Implémentation ; aide intégrée : `python scripts/komoot_library.py -h` et `… sync -h`, etc. |
-| [`requirements.txt`](requirements.txt) | Dépendance `komootgpx`. |
+| [`scripts/komoot_library.py`](scripts/komoot_library.py) | Implémentation ; aide intégrée : `uv run python scripts/komoot_library.py -h` et `… sync -h`, etc. |
+| [`pyproject.toml`](pyproject.toml) | Dépendance `komootgpx` et configuration du projet `uv`. |
