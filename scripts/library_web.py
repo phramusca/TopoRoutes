@@ -77,11 +77,12 @@ def _library_page(
                     f"{quote(gpx_file.name, safe='')}"
                 )
                 editor_url = (
-                    f"{gpx_studio_base_url.rstrip('/')}/app"
+                    f"{gpx_studio_base_url.rstrip('/')}/fr/app"
                     if gpx_studio_base_url
-                    else "/app"
+                    else "/fr/app"
                 )
                 editor_url = html.escape(editor_url, quote=True)
+                editor_base = html.escape(gpx_studio_base_url.rstrip("/"), quote=True)
                 editor_path_attr = (
                     f'data-gpx-path="{download_url}"'
                     if not gpx_studio_base_url
@@ -98,7 +99,8 @@ def _library_page(
                       </div>
                       <div class="file-actions">
                         <a class="button editor-open" href="{editor_url}"
-                           {editor_path_attr} target="_blank"
+                           data-editor-base="{editor_base}" {editor_path_attr}
+                           target="_blank"
                            rel="noopener noreferrer">Ouvrir dans gpx.studio</a>
                         <a class="button download" href="{download_url}"
                            download="{download_attribute}">Télécharger</a>
@@ -159,6 +161,8 @@ def _library_page(
     .toolbar {{ display: flex; gap: 16px; align-items: center; margin-bottom: 20px; }}
     .search {{ flex: 1; min-width: 0; padding: 12px 14px; border: 1px solid #cbd2d9;
       border-radius: 8px; font: inherit; background: white; }}
+    .language-select {{ padding: 12px 14px; border: 1px solid #cbd2d9; border-radius: 8px;
+      font: inherit; background: white; }}
     .counts {{ color: #52606d; white-space: nowrap; }}
     .tour-card {{ margin: 14px 0; padding: 20px; background: white; border: 1px solid #d9e2ec;
       border-radius: 12px; box-shadow: 0 2px 5px #102a4310; }}
@@ -199,6 +203,11 @@ def _library_page(
     <div class="toolbar">
       <input id="search" class="search" type="search" placeholder="Rechercher un parcours ou un fichier…"
              aria-label="Rechercher un parcours ou un fichier">
+      <label for="editor-language">Langue de gpx.studio</label>
+      <select id="editor-language" class="language-select">
+        <option value="fr" selected>Français</option>
+        <option value="en">English</option>
+      </select>
       <span id="counts" class="counts">{tour_count} parcours · {file_count} fichiers GPX</span>
     </div>
     <section id="tour-list">{content}</section>
@@ -210,12 +219,21 @@ def _library_page(
     const cards = [...document.querySelectorAll(".tour-card")];
     const noResults = document.querySelector("#no-results");
     const noMatch = document.querySelector("#no-match");
-    for (const link of document.querySelectorAll(".editor-open")) {{
+    const editorLanguage = document.querySelector("#editor-language");
+    const editorLinks = [...document.querySelectorAll(".editor-open")];
+    const updateEditorLinks = () => {{
+      for (const link of editorLinks) {{
+        const path = editorLanguage.value === "fr" ? "/fr/app" : "/app";
+        const url = new URL(path, link.dataset.editorBase || window.location.origin);
         if (link.dataset.gpxPath) {{
-          const fileUrl = window.location.origin + link.dataset.gpxPath;
-          link.href = link.href + "?files=" + encodeURIComponent(JSON.stringify([fileUrl]));
+          const fileUrl = new URL(link.dataset.gpxPath, window.location.origin);
+          url.searchParams.set("files", JSON.stringify([fileUrl.href]));
         }}
-    }}
+        link.href = url.href;
+      }}
+    }};
+    editorLanguage.addEventListener("change", updateEditorLinks);
+    updateEditorLinks();
     search.addEventListener("input", () => {{
       const query = search.value.trim().toLocaleLowerCase();
       let visible = 0;

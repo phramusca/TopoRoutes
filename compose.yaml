@@ -25,8 +25,6 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.gpxstudio
-      args:
-        PUBLIC_MAPTILER_KEY: ${PUBLIC_MAPTILER_KEY:-}
     depends_on:
       catalogue:
         condition: service_healthy
