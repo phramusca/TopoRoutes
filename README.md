@@ -18,6 +18,30 @@ uv sync
 
 ## Utilisation
 
+### Parcourir la bibliothèque dans un navigateur
+
+Depuis la racine du dépôt, lancez le serveur local :
+
+```bash
+uv run komoot-library web
+```
+
+Ouvrez ensuite <http://127.0.0.1:8765>. La page liste les parcours et leurs fichiers GPX, permet de rechercher par titre, identifiant ou nom de fichier, et propose le téléchargement de chaque version. Le bouton **Ouvrir gpx.studio** ouvre l’éditeur en ligne dans un nouvel onglet ; téléchargez d’abord le GPX voulu, puis importez-le dans gpx.studio. Le navigateur n’autorise pas le site gpx.studio à lire directement les fichiers de cette bibliothèque locale.
+
+Le serveur s’arrête avec `Ctrl+C`. Pour choisir un autre port :
+
+```bash
+uv run komoot-library web --port 9000
+```
+
+Par défaut, le serveur n’est accessible que depuis la machine locale. Pour l’ouvrir sur le réseau local :
+
+```bash
+uv run komoot-library web --host 0.0.0.0
+```
+
+Dans ce cas, toute personne pouvant joindre le serveur peut consulter et télécharger les GPX ; utilisez-le uniquement sur un réseau de confiance et ne redirigez pas ce port vers Internet.
+
 ### Synchroniser Komoot
 
 Depuis la racine du dépôt :
@@ -118,6 +142,7 @@ Rôles utilisés : `planned`, `recorded`, `komoot_export` et `edited_gpxstudio`.
 
 ```bash
 uv run komoot-library --help
+uv run komoot-library web --help
 uv run komoot-library sync --help
 uv run komoot-library add-gpxstudio --help
 ```

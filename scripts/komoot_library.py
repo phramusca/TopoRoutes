@@ -33,6 +33,8 @@ from pathlib import Path
 from typing import Any
 from xml.etree import ElementTree as ET
 
+from .library_web import serve as serve_library_web
+
 GPX_NS = "http://www.topografix.com/GPX/1/1"
 
 
@@ -263,6 +265,12 @@ def cmd_add_gpxstudio(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_web(args: argparse.Namespace) -> int:
+    library = resolve_library(args.library)
+    serve_library_web(library, host=args.host, port=args.port)
+    return 0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Komoot → komoot-library + meta.json")
     parser.add_argument(
@@ -292,6 +300,11 @@ def main() -> int:
     p_add.add_argument("--source", required=True, help="Fichier GPX exporté depuis gpx.studio")
     p_add.add_argument("--date", default=None, help="Suffixe date YYYY-MM-DD (défaut : aujourd’hui UTC)")
     p_add.set_defaults(func=cmd_add_gpxstudio)
+
+    p_web = sub.add_parser("web", help="Affiche la bibliothèque GPX dans un navigateur")
+    p_web.add_argument("--host", default="127.0.0.1", help="Interface réseau (défaut : 127.0.0.1)")
+    p_web.add_argument("--port", type=int, default=8765, help="Port HTTP (défaut : 8765)")
+    p_web.set_defaults(func=cmd_web)
 
     args = parser.parse_args()
     return args.func(args)
