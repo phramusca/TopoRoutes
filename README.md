@@ -42,6 +42,34 @@ uv run komoot-library web --host 0.0.0.0
 
 Dans ce cas, toute personne pouvant joindre le serveur peut consulter et télécharger les GPX ; utilisez-le uniquement sur un réseau de confiance et ne redirigez pas ce port vers Internet.
 
+### Catalogue et gpx.studio auto-hébergés avec Docker Compose
+
+gpx.studio est construit depuis ses sources amont : le projet ne fournit pas d’image Docker officielle. Compose démarre le catalogue, construit gpx.studio et sert les deux sous la même origine. Le bouton **Ouvrir dans gpx.studio** peut ainsi transmettre directement l’URL du GPX sélectionné à l’éditeur.
+
+1. Créez une clé dans [MapTiler Cloud](https://cloud.maptiler.com/account/keys/), puis copiez le fichier d’exemple :
+
+   ```bash
+   cp .env.example .env
+   ```
+
+   Placez la clé dans `PUBLIC_MAPTILER_KEY` dans `.env`. C’est une clé publique intégrée au JavaScript du navigateur, pas un secret ; limitez son origine autorisée à `localhost` et `127.0.0.1` pour l’usage local.
+
+2. Construisez et démarrez les services :
+
+   ```bash
+   docker compose up --build -d
+   ```
+
+3. Ouvrez <http://localhost:8080/library/>. L’éditeur gpx.studio est servi sous la même origine ; chaque bouton GPX **Ouvrir dans gpx.studio** ouvre la version choisie directement dans `/app`.
+
+Arrêter les services :
+
+```bash
+docker compose down
+```
+
+Le port est publié uniquement sur `127.0.0.1` et la bibliothèque est montée en lecture seule dans le service web. Pour mettre à jour la révision gpx.studio, changez `GPX_STUDIO_REF` dans `Dockerfile.gpxstudio`, puis reconstruisez avec `docker compose up --build -d`.
+
 ### Synchroniser Komoot
 
 Depuis la racine du dépôt :

@@ -1,0 +1,35 @@
+services:
+  catalogue:
+    build:
+      context: .
+      dockerfile: Dockerfile.catalogue
+    environment:
+      KOMOOT_LIBRARY: /data/komoot-library
+      GPX_STUDIO_BASE_URL: ""
+    volumes:
+      - ./komoot-library:/data/komoot-library:ro
+    expose:
+      - "8765"
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - from urllib.request import urlopen; urlopen('http://127.0.0.1:8765/').read(1)
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    restart: unless-stopped
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.gpxstudio
+      args:
+        PUBLIC_MAPTILER_KEY: ${PUBLIC_MAPTILER_KEY:-}
+    depends_on:
+      catalogue:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:8080:80"
+    restart: unless-stopped

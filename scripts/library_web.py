@@ -29,7 +29,10 @@ def _suggested_filename(title: str, tour_id: str, filename: str) -> str:
     return f"{safe_title} - {filename}"
 
 
-def _library_page(library: Path) -> bytes:
+def _library_page(
+    library: Path,
+    gpx_studio_base_url: str = "https://gpx.studio",
+) -> bytes:
     tours_dir = library / "tours"
     cards: list[str] = []
     tour_count = 0
@@ -73,6 +76,17 @@ def _library_page(library: Path) -> bytes:
                     f"/files/{quote(tour_dir.name, safe='')}/"
                     f"{quote(gpx_file.name, safe='')}"
                 )
+                editor_url = (
+                    f"{gpx_studio_base_url.rstrip('/')}/app"
+                    if gpx_studio_base_url
+                    else "/app"
+                )
+                editor_url = html.escape(editor_url, quote=True)
+                editor_path_attr = (
+                    f'data-gpx-path="{download_url}"'
+                    if not gpx_studio_base_url
+                    else ""
+                )
                 role_markup = f'<span class="role">{role}</span>' if role else ""
                 file_rows.append(
                     f"""
@@ -83,8 +97,8 @@ def _library_page(library: Path) -> bytes:
                         {role_markup}
                       </div>
                       <div class="file-actions">
-                        <a class="button editor-open" href="/app"
-                           data-gpx-path="{download_url}" target="_blank"
+                        <a class="button editor-open" href="{editor_url}"
+                           {editor_path_attr} target="_blank"
                            rel="noopener noreferrer">Ouvrir dans gpx.studio</a>
                         <a class="button download" href="{download_url}"
                            download="{download_attribute}">Télécharger</a>
@@ -197,8 +211,10 @@ def _library_page(library: Path) -> bytes:
     const noResults = document.querySelector("#no-results");
     const noMatch = document.querySelector("#no-match");
     for (const link of document.querySelectorAll(".editor-open")) {{
-      const fileUrl = window.location.origin + link.dataset.gpxPath;
-      link.href = "/app?files=" + encodeURIComponent(JSON.stringify([fileUrl]));
+        if (link.dataset.gpxPath) {{
+          const fileUrl = window.location.origin + link.dataset.gpxPath;
+          link.href = link.href + "?files=" + encodeURIComponent(JSON.stringify([fileUrl]));
+        }}
     }}
     search.addEventListener("input", () => {{
       const query = search.value.trim().toLocaleLowerCase();
@@ -234,14 +250,17 @@ def _download_file(library: Path, tour_id: str, filename: str) -> Path | None:
     return resolved if resolved.is_file() else None
 
 
-def make_handler(library: Path) -> type[BaseHTTPRequestHandler]:
+def make_handler(
+    library: Path,
+    gpx_studio_base_url: str = "https://gpx.studio",
+) -> type[BaseHTTPRequestHandler]:
     library = library.resolve()
 
     class LibraryHandler(BaseHTTPRequestHandler):
         def do_GET(self) -> None:
             request = urlsplit(self.path)
             if request.path == "/":
-                body = _library_page(library)
+                body = _library_page(library, gpx_studio_base_url)
                 self.send_response(200)
                 self.send_header("Content-Type", "text/html; charset=utf-8")
                 self.send_header("Content-Length", str(len(body)))
@@ -291,8 +310,15 @@ def make_handler(library: Path) -> type[BaseHTTPRequestHandler]:
     return LibraryHandler
 
 
-def serve(library: Path, host: str = "127.0.0.1", port: int = 8765) -> None:
-    server = ThreadingHTTPServer((host, port), make_handler(library))
+def serve(
+    library: Path,
+    host: str = "127.0.0.1",
+    port: int = 8765,
+    gpx_studio_base_url: str = "https://gpx.studio",
+) -> None:
+    server = ThreadingHTTPServer(
+        (host, port), make_handler(library, gpx_studio_base_url)
+    )
     print(f"Bibliothèque GPX : http://{host}:{port} (Ctrl+C pour arrêter)")
     try:
         server.serve_forever()

@@ -267,7 +267,12 @@ def cmd_add_gpxstudio(args: argparse.Namespace) -> int:
 
 def cmd_web(args: argparse.Namespace) -> int:
     library = resolve_library(args.library)
-    serve_library_web(library, host=args.host, port=args.port)
+    serve_library_web(
+        library,
+        host=args.host,
+        port=args.port,
+        gpx_studio_base_url=args.gpx_studio_base_url,
+    )
     return 0
 
 
@@ -304,6 +309,11 @@ def main() -> int:
     p_web = sub.add_parser("web", help="Affiche la bibliothèque GPX dans un navigateur")
     p_web.add_argument("--host", default="127.0.0.1", help="Interface réseau (défaut : 127.0.0.1)")
     p_web.add_argument("--port", type=int, default=8765, help="Port HTTP (défaut : 8765)")
+    p_web.add_argument(
+        "--gpx-studio-base-url",
+        default=os.environ.get("GPX_STUDIO_BASE_URL", "https://gpx.studio"),
+        help="URL gpx.studio (vide si l’éditeur est servi sous la même origine)",
+    )
     p_web.set_defaults(func=cmd_web)
 
     args = parser.parse_args()
