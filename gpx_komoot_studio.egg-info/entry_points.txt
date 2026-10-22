@@ -1,0 +1,2 @@
+[console_scripts]
+komoot-library = scripts.komoot_library:main

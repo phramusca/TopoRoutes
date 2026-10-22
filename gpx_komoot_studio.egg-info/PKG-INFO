@@ -1,0 +1,6 @@
+Metadata-Version: 2.4
+Name: gpx-komoot-studio
+Version: 0.1.0
+Summary: Scripts locaux pour synchroniser et organiser les parcours Komoot en GPX
+Requires-Python: >=3.10
+Requires-Dist: komootgpx>=1.4.3
