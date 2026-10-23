@@ -1,6 +1,6 @@
-# GPX Komoot Studio
+# TopoRoutes
 
-Outils locaux pour synchroniser des parcours Komoot en GPX, les organiser dans une bibliothèque versionnée, puis conserver les versions éditées avec [gpx.studio](https://gpx.studio).
+Bibliothèque locale pour synchroniser des parcours Komoot en GPX, les parcourir et conserver leurs versions éditées avec [gpx.studio](https://gpx.studio).
 
 Le téléchargement est assuré par [KomootGPX](https://github.com/timschneeb/KomootGPX), un outil communautaire qui s’appuie sur des endpoints Komoot non documentés.
 

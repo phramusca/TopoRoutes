@@ -150,7 +150,7 @@ def _library_page(
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Bibliothèque GPX</title>
+  <title>TopoRoutes</title>
   <style>
     :root {{ color-scheme: light; font-family: system-ui, sans-serif; color: #1f2933; }}
     * {{ box-sizing: border-box; }}
@@ -198,8 +198,8 @@ def _library_page(
 </head>
 <body>
   <main>
-    <h1>Bibliothèque GPX</h1>
-    <p class="subtitle">Parcours locaux — ouvrez ou téléchargez une version GPX.</p>
+    <h1>TopoRoutes</h1>
+    <p class="subtitle">Bibliothèque locale de parcours et de versions GPX.</p>
     <div class="toolbar">
       <input id="search" class="search" type="search" placeholder="Rechercher un parcours ou un fichier…"
              aria-label="Rechercher un parcours ou un fichier">
