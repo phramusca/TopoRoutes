@@ -4,6 +4,9 @@ Outils locaux pour synchroniser des parcours Komoot en GPX, les organiser dans u
 
 Le téléchargement est assuré par [KomootGPX](https://github.com/timschneeb/KomootGPX), un outil communautaire qui s’appuie sur des endpoints Komoot non documentés.
 
+> [!WARNING]
+> **Projet en développement — fonctionnalités encore limitées.** Pour l’instant, l’application synchronise des GPX depuis Komoot vers une bibliothèque locale, permet de les parcourir et de les télécharger, et peut y ajouter manuellement un GPX exporté de gpx.studio. Elle ne gère pas encore les liens entre parcours et activités, ni l’envoi automatique vers Komoot. Sauvegardez votre bibliothèque ; la synchronisation Komoot repose sur un outil communautaire susceptible de cesser de fonctionner.
+
 ## Installation
 
 Prérequis : Python 3.10 ou plus récent et [uv](https://docs.astral.sh/uv/getting-started/installation/).
