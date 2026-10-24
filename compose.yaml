@@ -36,3 +36,94 @@ services:
     ports:
       - "127.0.0.1:8080:80"
     restart: unless-stopped
+
+  wanderer-search:
+    image: getmeili/meilisearch:v1.36.0
+    profiles: ["phase0"]
+    env_file:
+      - path: ./.env.wanderer
+        required: false
+    environment:
+      MEILI_NO_ANALYTICS: "true"
+    volumes:
+      - wanderer_phase0_search:/meili_data
+    networks:
+      - wanderer_phase0
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:7700/health"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 20s
+
+  wanderer-db:
+    image: flomp/wanderer-db:v0.21.1
+    profiles: ["phase0"]
+    depends_on:
+      wanderer-search:
+        condition: service_healthy
+    env_file:
+      - path: ./.env.wanderer
+        required: false
+    environment:
+      MEILI_URL: http://wanderer-search:7700
+      ORIGIN: http://localhost:3080
+    volumes:
+      - wanderer_phase0_pb_data:/pb_data
+      - wanderer_phase0_plugins:/data/plugins
+    networks:
+      - wanderer_phase0
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "/curl", "--fail", "http://localhost:8090/health"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 20s
+
+  wanderer-web:
+    image: flomp/wanderer-web:v0.21.1
+    profiles: ["phase0"]
+    depends_on:
+      wanderer-search:
+        condition: service_healthy
+      wanderer-db:
+        condition: service_healthy
+    env_file:
+      - path: ./.env.wanderer
+        required: false
+    environment:
+      MEILI_URL: http://wanderer-search:7700
+      ORIGIN: http://localhost:3080
+      BODY_SIZE_LIMIT: "Infinity"
+      PUBLIC_POCKETBASE_URL: http://wanderer-db:8090
+      PUBLIC_DISABLE_SIGNUP: "false"
+      UPLOAD_FOLDER: /app/uploads
+      OVERPASS_API_URL: https://overpass-api.de
+      VALHALLA_URL: https://valhalla1.openstreetmap.de
+      NOMINATIM_URL: https://nominatim.openstreetmap.org
+      PUBLIC_MAP_MAX_POLYLINES: "100"
+    volumes:
+      - wanderer_phase0_uploads:/app/uploads
+    ports:
+      - "127.0.0.1:3080:3000"
+    networks:
+      - wanderer_phase0
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:3000/"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 20s
+
+volumes:
+  wanderer_phase0_search:
+  wanderer_phase0_pb_data:
+  wanderer_phase0_plugins:
+  wanderer_phase0_uploads:
+
+networks:
+  wanderer_phase0:
+    driver: bridge

@@ -93,6 +93,35 @@ docker compose down
 
 Le port est publié uniquement sur `127.0.0.1` et la bibliothèque est montée en lecture seule dans le service web. Pour mettre à jour la révision gpx.studio, définissez `GPX_STUDIO_REF` dans `.env`, puis reconstruisez avec `docker compose up --build -d`. La même révision sert à construire l’éditeur et à générer la liste des langues du catalogue.
 
+### Wanderer isolé pour les essais de la phase 0
+
+Le profil `phase0` démarre une instance Wanderer séparée de celle éventuellement hébergée sur le Raspberry Pi. Elle écoute uniquement sur `127.0.0.1:3080`, utilise un réseau et des volumes Docker dédiés et ne partage aucune donnée avec le catalogue local ou l’autre instance. Les images Wanderer sont épinglées à `v0.21.1` et Meilisearch à `v1.36.0` afin que les essais soient reproductibles.
+
+Générez des secrets locaux avant le premier démarrage (la clé PocketBase doit faire exactement 32 caractères) :
+
+```bash
+cp .env.wanderer.example .env.wanderer
+{
+  printf 'MEILI_MASTER_KEY=%s\n' "$(openssl rand -hex 32)"
+  printf 'POCKETBASE_ENCRYPTION_KEY=%s\n' "$(openssl rand -hex 16)"
+  printf 'POCKETBASE_PROXY_SECRET=%s\n' "$(openssl rand -hex 32)"
+} > .env.wanderer
+```
+
+Démarrez seulement Wanderer et ses dépendances :
+
+```bash
+docker compose --profile phase0 up -d wanderer-web
+```
+
+Ouvrez <http://localhost:3080> et créez un compte dédié aux essais. Les inscriptions sont temporairement activées pour permettre cette première création ; le port reste limité à la machine locale. Les données Wanderer sont conservées dans des volumes Docker distincts. Pour arrêter cette instance sans supprimer ses données :
+
+```bash
+docker compose --profile phase0 stop wanderer-web wanderer-db wanderer-search
+```
+
+Ne partagez pas `.env.wanderer` et ne supprimez pas les volumes tant que les résultats de phase 0 sont utiles.
+
 ### Synchroniser Komoot
 
 Depuis la racine du dépôt :

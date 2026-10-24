@@ -8,3 +8,4 @@ gpx_komoot_studio.egg-info/requires.txt
 gpx_komoot_studio.egg-info/top_level.txt
 scripts/__init__.py
 scripts/komoot_library.py
+scripts/library_web.py
