@@ -49,13 +49,21 @@ Dans ce cas, toute personne pouvant joindre le serveur peut consulter et téléc
 
 gpx.studio est construit depuis ses sources amont : le projet ne fournit pas d’image Docker officielle. Compose démarre le catalogue, construit gpx.studio et sert les deux sous la même origine. Le bouton **Ouvrir dans gpx.studio** peut ainsi transmettre directement l’URL du GPX sélectionné à l’éditeur.
 
-1. Construisez et démarrez les services :
+1. Pour utiliser **Liberty Satellite** (fond MapTiler), créez une clé dans [MapTiler Cloud](https://cloud.maptiler.com/account/keys/), puis copiez le fichier d’exemple :
+
+   ```bash
+   cp .env.example .env
+   ```
+
+   Renseignez `PUBLIC_MAPTILER_KEY` dans `.env`. La clé est publique, car intégrée au JavaScript servi au navigateur ; limitez ses origines autorisées à `localhost` et `127.0.0.1` pour un usage local.
+
+2. Construisez et démarrez les services :
 
    ```bash
    docker compose up --build -d
    ```
 
-2. Ouvrez <http://localhost:8080/library/>. gpx.studio est aussi disponible à la racine <http://localhost:8080/> ; son sélecteur de langue permet de choisir Français. Le catalogue propose également Français ou English pour les liens **Ouvrir dans gpx.studio**. Le port `8765` du catalogue n’est pas publié sur l’hôte dans Compose ; l’éditeur et le catalogue sont servis sous la même origine pour charger directement le GPX choisi.
+3. Ouvrez <http://localhost:8080/library/>. gpx.studio est aussi disponible à la racine <http://localhost:8080/> ; son sélecteur de langue permet de choisir Français. Le catalogue propose également Français ou English pour les liens **Ouvrir dans gpx.studio**. Le port `8765` du catalogue n’est pas publié sur l’hôte dans Compose ; l’éditeur et le catalogue sont servis sous la même origine pour charger directement le GPX choisi.
 
 Nginx relaie aussi les styles, sprites, polices et tuiles de terrain de gpx.studio depuis la même origine pour éviter les blocages CORS du navigateur.
 
@@ -63,7 +71,7 @@ Nginx relaie aussi les styles, sprites, polices et tuiles de terrain de gpx.stud
 
 Les fonds libres intégrés suffisent pour un usage courant. Vous pouvez aussi ajouter un fond personnalisé fourni par MapTiler avec une clé API.
 
-La clé MapTiler n’ajoute pas de fond automatiquement et n’est pas utilisée par le fond par défaut. Pour l’utiliser, ajoutez un fond personnalisé dans gpx.studio :
+La clé de build permet d’utiliser le fond Liberty Satellite intégré. Pour un fond MapTiler personnalisé, ajoutez aussi une couche dans gpx.studio :
 
 1. Créez une clé dans [MapTiler Cloud](https://cloud.maptiler.com/account/keys/). Dans **Allowed HTTP Origins**, ajoutez `localhost` et `127.0.0.1`, chacun sur sa propre ligne ; ne renseignez pas le protocole ni le port. Laissez **Allowed user-agent header** vide.
 2. Ouvrez gpx.studio, puis les réglages des couches et la section **Custom layers**.
@@ -75,7 +83,7 @@ La clé MapTiler n’ajoute pas de fond automatiquement et n’est pas utilisée
 
 4. Enregistrez la couche et sélectionnez-la comme fond de carte. Elle est conservée dans les réglages locaux du navigateur.
 
-La clé est publique car utilisée par le navigateur. La limiter aux origines locales réduit les usages depuis d’autres sites. Le fichier `.env` n’est pas nécessaire pour cette configuration personnalisée.
+La clé est publique car utilisée par le navigateur. La limiter aux origines locales réduit les usages depuis d’autres sites.
 
 Arrêter les services :
 
