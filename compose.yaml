@@ -3,6 +3,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.catalogue
+      args:
+        GPX_STUDIO_REF: ${GPX_STUDIO_REF:-6a0d4343718e01637a8e301251977fb218cf88f8}
     environment:
       KOMOOT_LIBRARY: /data/komoot-library
       GPX_STUDIO_BASE_URL: ""
@@ -26,6 +28,7 @@ services:
       context: .
       dockerfile: Dockerfile.gpxstudio
       args:
+        GPX_STUDIO_REF: ${GPX_STUDIO_REF:-6a0d4343718e01637a8e301251977fb218cf88f8}
         PUBLIC_MAPTILER_KEY: ${PUBLIC_MAPTILER_KEY:-}
     depends_on:
       catalogue:

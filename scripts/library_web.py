@@ -9,6 +9,22 @@ from pathlib import Path
 from urllib.parse import quote, unquote, urlsplit
 
 TOUR_ID_PATTERN = re.compile(r"^\d+$")
+FALLBACK_EDITOR_LANGUAGES = {"fr": "Français", "en": "English"}
+
+
+def _editor_languages() -> dict[str, str]:
+    languages_path = Path(__file__).with_name("gpx_studio_languages.json")
+    try:
+        languages = json.loads(languages_path.read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        return FALLBACK_EDITOR_LANGUAGES
+
+    if not isinstance(languages, dict) or not all(
+        isinstance(code, str) and isinstance(name, str)
+        for code, name in languages.items()
+    ):
+        raise ValueError(f"Invalid gpx.studio language list: {languages_path}")
+    return languages
 
 
 def _file_role(meta: dict, filename: str) -> str:
@@ -145,6 +161,15 @@ def _library_page(
         content = ""
         empty_class = ""
 
+    languages = _editor_languages()
+    selected_language = "fr" if "fr" in languages else next(iter(languages), "en")
+    language_options = "".join(
+        f'<option value="{html.escape(code, quote=True)}"'
+        f'{" selected" if code == selected_language else ""}>'
+        f'{html.escape(name)}</option>'
+        for code, name in languages.items()
+    )
+
     page = f"""<!doctype html>
 <html lang="fr">
 <head>
@@ -205,8 +230,7 @@ def _library_page(
              aria-label="Rechercher un parcours ou un fichier">
       <label for="editor-language">Langue de gpx.studio</label>
       <select id="editor-language" class="language-select">
-        <option value="fr" selected>Français</option>
-        <option value="en">English</option>
+        {language_options}
       </select>
       <span id="counts" class="counts">{tour_count} parcours · {file_count} fichiers GPX</span>
     </div>
@@ -221,9 +245,15 @@ def _library_page(
     const noMatch = document.querySelector("#no-match");
     const editorLanguage = document.querySelector("#editor-language");
     const editorLinks = [...document.querySelectorAll(".editor-open")];
+    const savedLanguage = localStorage.getItem("gpx-studio-language");
+    if ([...editorLanguage.options].some((option) => option.value === savedLanguage)) {{
+      editorLanguage.value = savedLanguage;
+    }}
     const updateEditorLinks = () => {{
       for (const link of editorLinks) {{
-        const path = editorLanguage.value === "fr" ? "/fr/app" : "/app";
+        const path = editorLanguage.value === "en"
+          ? "/app"
+          : `/${{encodeURIComponent(editorLanguage.value)}}/app`;
         const url = new URL(path, link.dataset.editorBase || window.location.origin);
         if (link.dataset.gpxPath) {{
           const fileUrl = new URL(link.dataset.gpxPath, window.location.origin);
@@ -232,7 +262,10 @@ def _library_page(
         link.href = url.href;
       }}
     }};
-    editorLanguage.addEventListener("change", updateEditorLinks);
+    editorLanguage.addEventListener("change", () => {{
+      localStorage.setItem("gpx-studio-language", editorLanguage.value);
+      updateEditorLinks();
+    }});
     updateEditorLinks();
     search.addEventListener("input", () => {{
       const query = search.value.trim().toLocaleLowerCase();

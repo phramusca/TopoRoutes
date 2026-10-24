@@ -63,7 +63,7 @@ gpx.studio est construit depuis ses sources amont : le projet ne fournit pas d�
    docker compose up --build -d
    ```
 
-3. Ouvrez <http://localhost:8080/library/>. gpx.studio est aussi disponible à la racine <http://localhost:8080/> ; son sélecteur de langue permet de choisir Français. Le catalogue propose également Français ou English pour les liens **Ouvrir dans gpx.studio**. Le port `8765` du catalogue n’est pas publié sur l’hôte dans Compose ; l’éditeur et le catalogue sont servis sous la même origine pour charger directement le GPX choisi.
+3. Ouvrez <http://localhost:8080/library/>. gpx.studio est aussi disponible à la racine <http://localhost:8080/>. Le catalogue propose les langues de l’éditeur pour les liens **Ouvrir dans gpx.studio** ; la sélection est mémorisée dans le navigateur. La liste est extraite de la révision gpx.studio construite, sans recopier les langues dans le code du catalogue. Le port `8765` du catalogue n’est pas publié sur l’hôte dans Compose ; l’éditeur et le catalogue sont servis sous la même origine pour charger directement le GPX choisi.
 
 Nginx relaie aussi les styles, sprites, polices et tuiles de terrain de gpx.studio depuis la même origine pour éviter les blocages CORS du navigateur.
 
@@ -91,7 +91,7 @@ Arrêter les services :
 docker compose down
 ```
 
-Le port est publié uniquement sur `127.0.0.1` et la bibliothèque est montée en lecture seule dans le service web. Pour mettre à jour la révision gpx.studio, changez `GPX_STUDIO_REF` dans `Dockerfile.gpxstudio`, puis reconstruisez avec `docker compose up --build -d`.
+Le port est publié uniquement sur `127.0.0.1` et la bibliothèque est montée en lecture seule dans le service web. Pour mettre à jour la révision gpx.studio, définissez `GPX_STUDIO_REF` dans `.env`, puis reconstruisez avec `docker compose up --build -d`. La même révision sert à construire l’éditeur et à générer la liste des langues du catalogue.
 
 ### Synchroniser Komoot
 
