@@ -7,6 +7,13 @@ RUN apk add --no-cache ca-certificates git
 RUN git clone https://github.com/gpxstudio/gpx.studio.git /src \
     && git -C /src checkout "${GPX_STUDIO_REF}"
 
+RUN sed -i \
+    -e 's#https://styles.gpx.studio/#/gpx-proxy/styles/#g' \
+    -e 's#https://tiles.gpx.studio/#/gpx-proxy/tiles/#g' \
+    -e 's#https://tiles.mapterhorn.com/#/gpx-proxy/mapterhorn/#g' \
+    /src/website/src/lib/assets/layers.ts \
+    /src/website/src/lib/utils.ts
+
 RUN npm install --global npm@12.2.1 \
     && npm cache clean --force
 

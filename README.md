@@ -57,6 +57,8 @@ gpx.studio est construit depuis ses sources amont : le projet ne fournit pas d�
 
 2. Ouvrez <http://localhost:8080/library/>. gpx.studio est aussi disponible à la racine <http://localhost:8080/> ; son sélecteur de langue permet de choisir Français. Le catalogue propose également Français ou English pour les liens **Ouvrir dans gpx.studio**. Le port `8765` du catalogue n’est pas publié sur l’hôte dans Compose ; l’éditeur et le catalogue sont servis sous la même origine pour charger directement le GPX choisi.
 
+Nginx relaie aussi les styles, sprites, polices et tuiles de terrain de gpx.studio depuis la même origine pour éviter les blocages CORS du navigateur.
+
 #### Ajouter un fond MapTiler
 
 Les fonds libres intégrés suffisent pour un usage courant. Vous pouvez aussi ajouter un fond personnalisé fourni par MapTiler avec une clé API.
